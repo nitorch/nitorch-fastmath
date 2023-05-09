@@ -9,7 +9,6 @@ from nitorch_core.tensors import as_tensor, max_backend, to_max_backend
 # Expose from private implementation
 from ._expm import expm, _expm
 from ._logm import logm
-from ._linalg_qr import eig_sym, eig_sym_
 from .sym_script import *
 
 

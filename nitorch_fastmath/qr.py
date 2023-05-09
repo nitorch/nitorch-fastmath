@@ -33,6 +33,8 @@ the GPU implementation is just unusable).
 
 2. [**"Implicit QR algorithm"**](https://en.wikipedia.org/wiki/QR_algorithm#The_implicit_QR_algorithm)
     _Wikipedia_.
+
+---
 """
 __all__ = [
     'eig_sym',

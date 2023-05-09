@@ -31,6 +31,8 @@ automatic differentiation). This is because these function involve multiple
 calls to `log` and `exp`, which must all store their input in order to
 backpropagate, whereas a single tensor needs to be stored to backpropagate
 through the entire softmax function.
+
+---
 """
 __all__ = [
     'logsumexp',

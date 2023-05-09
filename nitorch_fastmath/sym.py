@@ -22,6 +22,8 @@ where `*` is any number of leading batch dimensions, `NN` can take values:
 - `N`: and the matrix is assumed to be a diagonal matrix,
 - `N*(N+1)//2`: and the matrix is assumed to be symmetric,
 - `N*N`: and the matrix is assumed to be full.
+
+---
 """
 __all__ = [
     'sym_to_full', 'sym_diag', 'sym_outer', 'sym_det',

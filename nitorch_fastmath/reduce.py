@@ -3,14 +3,15 @@ r'''
 
 This first section reimplements several reduction functions (sum, mean,
 max...), with a more consistent API than the native pytorch one:
+
 - all functions can reduce across multiple dimensions simultaneously
 - min/max/median functions only return the reduced tensor by default
   (not the original indices of the returned elements).
   They have a specific argument `return_indices` to request these indices.
 - all functions have an `omitnan` argument, or alternatively a `nan`
   version (e.g., `nansum`) where `omitnan=True` by default.
-The typical API for all functions is:
 
+The typical API for all functions is:
 ```python
 def fn(input, dim=None, keepdim=False, omitnan=False, inplace=False, out=None): ...
   """
@@ -26,13 +27,13 @@ def fn(input, dim=None, keepdim=False, omitnan=False, inplace=False, out=None): 
 
 Reduction functions that pick a value from the input tensor (e.g., `max`)
 have the additional argument:
-
 ```python
 def fn(..., return_indices=False): ...
   """
   return_indices : bool, Also return indices of the picked elements
   """
 ```
+---
 '''
 __all__ = [
     'min', 'max', 'nanmin', 'nanmax', 'median',
