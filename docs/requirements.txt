@@ -1,0 +1,5 @@
+mkdocs
+mkdocs-material
+mkdocstrings[python]>=0.18
+jitfields @ git+https://github.com/balbasty/jitfields
+
