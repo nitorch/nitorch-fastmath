@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 from typing import Callable, Union, Sequence, Literal, Optional
 from math import ceil, log
-from .linalg import lmdiv
+from .sugar import lmdiv
 
 
 def trapprox(

@@ -184,10 +184,12 @@ def sub2ind(subs, shape, out=None):
 # instead of performing a proper floor. In recent version of pytorch, it is
 # advised to use div(..., rounding_mode='trunc'|'floor') instead.
 # Here, we only use floor_divide on positive values so we do not care.
-if 'rounding_mode' in inspect.signature(torch.div).parameters:
+try:
+    _one = torch.as_tensor(1.)
+    torch.div(_one, _one, rounding_mode='trunc')
     def _trunc_div(*a, **k):
         return torch.div(*a, **k, rounding_mode='trunc')
-else:
+except Exception:
     _trunc_div = torch.floor_divide
 
 
