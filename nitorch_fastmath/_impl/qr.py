@@ -39,7 +39,7 @@ the GPU implementation is just unusable).
 import torch
 from torch import Tensor
 from typing import Tuple
-from .utils import ensure_list, custom_fwd, custom_bwd, eps
+from ..utils import ensure_list, custom_fwd, custom_bwd, eps
 
 
 def _smart_conj(x):

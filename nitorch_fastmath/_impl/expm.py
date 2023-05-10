@@ -9,7 +9,7 @@ object of future work.
 """
 import torch
 import torch.nn.functional as F
-from .utils import custom_fwd, custom_bwd, broadcast_backward
+from ..utils import custom_fwd, custom_bwd, broadcast_backward
 
 
 def expm(X, basis=None, max_order=10000, tol=1e-32):

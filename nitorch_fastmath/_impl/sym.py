@@ -529,15 +529,16 @@ def sym_outer(x: Tensor) -> Tensor:
 
 
 @torch.jit.script
-def jhj1(jac, hess):
+def jhj1(jac, hess, out):
     # jac should be ordered as (D, D, ...)          [D=1]
     # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=1]
     # return ->  (D*(D+1)//2, ...)
-    return (jac[0, 0] * jac[0, 0] * hess[0])[None]
+    out[0] = jac[0, 0] * jac[0, 0] * hess[0]
+    return out
 
 
 @torch.jit.script
-def jhj2(jac, hess):
+def jhj2(jac, hess, out):
     # jac should be ordered as (D, D, ...)          [D=2]
     # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=3]
     # return ->  (D*(D+1)//2, ...)
@@ -546,7 +547,6 @@ def jhj2(jac, hess):
     # out[00] = h00*j00^2 + h11*j01^2 + 2*h01*j00*j01
     # out[11] = h00*j10^2 + h11*j11^2 + 2*h01*j10*j11
     # out[01] = h00*j00*j10 + h11*j01*j11 + h01*(j01*j10 + j00*j11)
-    out = torch.empty_like(hess)
     h00 = hess[0]
     h11 = hess[1]
     h01 = hess[2]
@@ -561,7 +561,7 @@ def jhj2(jac, hess):
 
 
 @torch.jit.script
-def jhj3(jac, hess):
+def jhj3(jac, hess, out):
     # jac should be ordered as (D, D, ...)          [D=3]
     # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=6]
     # return ->  (D*(D+1)//2, ...)
@@ -573,7 +573,6 @@ def jhj3(jac, hess):
     # out[01] = j10*(h00*j00 + h01*j01 + h02*j02) + j11*(h01*j00 + h11*j01 + h12*j02) + j12*(h02*j00 + h12*j01 + h22*j02)
     # out[02] = j20*(h00*j00 + h01*j01 + h02*j02) + j21*(h01*j00 + h11*j01 + h12*j02) + j22*(h02*j00 + h12*j01 + h22*j02)
     # out[12] = j20*(h00*j10 + h01*j11 + h02*j12) + j21*(h01*j10 + h11*j11 + h12*j12) + j22*(h02*j10 + h12*j11 + h22*j12)
-    out = torch.empty_like(hess)
     h00 = hess[0]
     h11 = hess[1]
     h22 = hess[2]
@@ -599,18 +598,14 @@ def jhj3(jac, hess):
 
 
 @torch.jit.script
-def jhjn(jac, hess):
+def jhjn(jac, hess, out):
     # jac should be ordered as (D, K, ...)
     # hess should be ordered as (K*(K+1)//2, ...)
     # return ->  (D*(D+1)//2, ...)
 
     K, D = jac.shape[:2]
-    D2 = D * (D + 1) // 2
     K2 = hess.shape[0]
     is_diag = K2 == K
-    batch = torch.broadcast_shapes(jac.shape[2:], hess.shape[1:])
-
-    out = hess.new_zeros([D2] + batch)
 
     dacc = 0
     for d in range(D):
@@ -660,13 +655,16 @@ def sym_matmul(j, h):
     k, d = j.shape[-2:]
     h = h.movedim(-1, 0)
     j = j.movedim(-1, 0).movedim(-1, 0)
+    d2 = d * (d + 1) // 2
+    batch = torch.broadcast_shapes(j.shape[2:], h.shape[1:])
+    out = h.new_zeros((d2,) + batch)
     if d == k == 1:
-        out = jhj1(j, h)
+        out = jhj1(j, h, out)
     elif d == k == 2:
-        out = jhj2(j, h)
+        out = jhj2(j, h, out)
     elif d == k == 3:
-        out = jhj3(j, h)
+        out = jhj3(j, h, out)
     else:
-        out = jhjn(j, h)
+        out = jhjn(j, h, out)
     out = out.movedim(0, -1)
     return out

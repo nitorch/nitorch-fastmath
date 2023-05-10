@@ -1,3 +1,4 @@
+from .batched import *
 from .lie import *
 from .qr import *
 from .realtransforms import *

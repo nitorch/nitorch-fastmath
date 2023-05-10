@@ -23,7 +23,7 @@ __all__ = [
     'dot',
     'mdot',
     'is_orthonormal',
-    'ruond',
+    'round',
 ]
 import torch
 from torch import Tensor

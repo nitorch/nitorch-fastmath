@@ -1,7 +1,7 @@
 """
 Linear Algebra utilities.
 
-I found that some torch functions (e.g., `inverse()` or `det()`) where
+I found that some torch functions (e.g., `inverse()` or `det()`) were
 not so efficient when applied to large batches of small matrices,
 especially on the GPU (this is not so true on the CPU). I reimplemented
 them using torchscript for 2x2 and 3x3 matrices, and they are much
@@ -131,8 +131,7 @@ def batchinv(a):
 
 
 @torch.jit.script
-def matvec3(A, v):
-    Av = torch.empty_like(v)
+def matvec3(A, v, Av):
     Av[0] = A[0, 0] * v[0] + A[0, 1] * v[1] + A[0, 2] * v[2]
     Av[1] = A[1, 0] * v[0] + A[1, 1] * v[1] + A[1, 2] * v[2]
     Av[2] = A[2, 0] * v[0] + A[2, 1] * v[1] + A[2, 2] * v[2]
@@ -140,16 +139,14 @@ def matvec3(A, v):
 
 
 @torch.jit.script
-def matvec2(A, v):
-    Av = torch.empty_like(v)
+def matvec2(A, v, Av):
     Av[0] = A[0, 0] * v[0] + A[0, 1] * v[1]
     Av[1] = A[1, 0] * v[0] + A[1, 1] * v[1]
     return Av
 
 
 @torch.jit.script
-def matvec1(A, v):
-    Av = torch.empty_like(v)
+def matvec1(A, v, Av):
     Av[0] = A[0, 0] * v[0]
     return Av
 
@@ -179,6 +176,8 @@ def batchmatvec(mat, vec):
         return matvec(mat, vec)
     vec = vec.movedim(-1, 0)
     mat = mat.movedim(-1, 0).movedim(-1, 0)
+    batch = torch.broadcast_shapes(mat.shape[2:], vec.shape[1:])
+    out = vec.new_empty(vec.shape[:1] + batch)
     if n == 1:
         mv = matvec1
     elif n == 2:
@@ -186,6 +185,6 @@ def batchmatvec(mat, vec):
     else:
         assert n == 3
         mv = matvec3
-    out = mv(mat, vec)
+    out = mv(mat, vec, out)
     out = out.movedim(0, -1)
     return out
