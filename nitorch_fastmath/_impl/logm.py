@@ -5,8 +5,8 @@
 #   In the meantime, we should use scipy's implementation (which
 #   does not accept batched matrices either) with a (parallel?) loop
 import torch
-from .optionals import custom_fwd, custom_bwd
-from .optionals import numpy as np
+from .utils import custom_fwd, custom_bwd
+import numpy as np
 
 
 def matrix_chain_rule(A, G, f):

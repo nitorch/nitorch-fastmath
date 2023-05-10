@@ -9,7 +9,22 @@ unsqueezing, or shuffling dimensions.
 For example, we implement `matvec(mat, vec)`, which in PyTorch must
 be written `matmul(mat, vec.unsqueeze(-1)).squeeze(-1)`.
 
+---
 """
+__all__ = [
+    'kron2',
+    'lmdiv',
+    'rmdiv',
+    'inv',
+    'matvec',
+    'solvevec',
+    'outer',
+    'trace',
+    'dot',
+    'mdot',
+    'is_orthonormal',
+    'ruond',
+]
 import torch
 from torch import Tensor
 from typing import Literal, Optional, Tuple
@@ -25,32 +40,36 @@ pinv = torch.linalg.pinv
 cholesky = torch.linalg.cholesky
 
 
-def kron2(x: Tensor, y: Tensor) -> Tensor:
-    """Kronecker product of two matrices
+def kron2(a: Tensor, b: Tensor) -> Tensor:
+    r"""Kronecker product of two matrices $\mathbf{A} \otimes \mathbf{B}$
 
     Parameters
     ----------
-    x : `(..., m, n) tensor`
+    a: `(..., m, n) tensor`
         Left matrix, with shape `(..., m, n)`.
-    y : `(..., p, q) tensor`
+    b : `(..., p, q) tensor`
         Right matrix, with shape `(..., p, q)`.
 
     Returns
     -------
-    xy : `(..., p*m, q*n) tensor`
+    ab : `(..., p*m, q*n) tensor`
         Kronecker product, with shape `(..., p*m, q*n)`.
 
-        Note that:
-        `xy.reshape([P, M, Q, N])[p, m, q, n] == x[m, n] * y[n, q]`
+        Note: `ab.reshape([P, M, Q, N])[p, m, q, n] == a[m, n] * b[n, q]`
+
+    References
+    ----------
+    - [**Kronecker product**](https://en.wikipedia.org/wiki/Kronecker_product),
+    _Wikipedia_.
 
     """
-    *_, m, n = x.shape
-    *_, p, q = y.shape
-    x = x[..., None, :, None, :]
-    y = y[..., :, None, :, None]
-    xy = x*y
-    xy = xy.reshape([*xy.shape[:-4], m*p, n*q])
-    return xy
+    *_, m, n = a.shape
+    *_, p, q = b.shape
+    a = a[..., None, :, None, :]
+    b = b[..., :, None, :, None]
+    ab = a*b
+    ab = ab.reshape([*ab.shape[:-4], m*p, n*q])
+    return ab
 
 
 def lmdiv(
@@ -60,9 +79,9 @@ def lmdiv(
     rcond: float = 1e-15,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    r"""Left matrix division ``inv(a) @ b``.
+    r"""Left matrix division $\mathbf{A}^{-1} \times \mathbf{B}$.
 
-    !! note
+    !!! note
         if ``m != n``, the Moore-Penrose pseudoinverse is always used.
 
     Parameters
@@ -73,20 +92,32 @@ def lmdiv(
         Right input ("the point"), with shape `(..., m, k)`.
     method : `{'lu', 'chol', 'svd', 'pinv'}`, default='lu'
         Inversion method:
-        * 'lu'   : LU decomposition. ``a`` must be invertible.
-        * 'chol' : Cholesky decomposition. ``a`` must be positive definite.
-        * 'svd'  : Singular Value decomposition.
-        * 'pinv' : Moore-Penrose pseudoinverse
+
+        * `'lu'`   : LU decomposition. ``a`` must be invertible.
+        * `'chol'` : Cholesky decomposition. ``a`` must be positive definite.
+        * `'svd'`  : Singular Value decomposition.
+        * `'pinv'` : Moore-Penrose pseudoinverse
                    (by means of SVD with thresholded singular values).
     rcond : `float`, default=1e-15
-        Cutoff for small singular values when ``method == 'pinv'``.
+        Cutoff for small singular values when ``method='pinv'``.
     out : `tensor`, optional
-        Output tensor (only used by methods 'lu' and 'chol').
+        Output tensor.
 
     Returns
     -------
     x : `(..., n, k) tensor`
         Solution of the linear system, with shape `(..., n, k)`,
+
+    References
+    ----------
+    1. [**LU decomposition**](https://en.wikipedia.org/wiki/LU_decomposition),
+    _Wikipedia_.
+    2. [**Cholesky decomposition**](https://en.wikipedia.org/wiki/Cholesky_decomposition),
+    _Wikipedia_.
+    3. [**Singular value decomposition**](https://en.wikipedia.org/wiki/Singular_value_decomposition),
+    _Wikipedia_.
+    4. [**Moore-Penrose inverse**](https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse),
+    _Wikipedia_.
 
     """
     if a.shape[-1] != a.shape[-2]:
@@ -113,9 +144,9 @@ def rmdiv(
     rcond: float = 1e-15,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    r"""Right matrix division ``a @ inv(b)``.
+    r"""Right matrix division $\mathbf{A} \times \mathbf{B}^{-1}$.
 
-    !! note
+    !!! note
         if ``m != n``, the Moore-Penrose pseudoinverse is always used.
 
     Parameters
@@ -126,20 +157,32 @@ def rmdiv(
         Right input ("the system"), with shape `(..., n, m)`.
     method : `{'lu', 'chol', 'svd', 'pinv'}`, default='lu'
         Inversion method:
-        * 'lu'   : LU decomposition. ``a`` must be invertible.
-        * 'chol' : Cholesky decomposition. ``a`` must be positive definite.
-        * 'svd'  : Singular Value decomposition. ``a`` must be invertible.
-        * 'pinv' : Moore-Penrose pseudoinverse
+
+        * `'lu'`   : LU decomposition. ``a`` must be invertible.
+        * `'chol'` : Cholesky decomposition. ``a`` must be positive definite.
+        * `'svd'`  : Singular Value decomposition.
+        * `'pinv'` : Moore-Penrose pseudoinverse
                    (by means of SVD with thresholded singular values).
     rcond : `float`, default=1e-15
-        Cutoff for small singular values when ``method == 'pinv'``.
+        Cutoff for small singular values when ``method='pinv'``.
     out : `tensor`, optional
-        Output tensor (only used by methods 'lu' and 'chol').
+        Output tensor
 
     Returns
     -------
     x : `(..., k, m) tensor`
         Solution of the linear system, with shape `(..., k, m)`.
+
+    References
+    ----------
+    1. [**LU decomposition**](https://en.wikipedia.org/wiki/LU_decomposition),
+    _Wikipedia_.
+    2. [**Cholesky decomposition**](https://en.wikipedia.org/wiki/Cholesky_decomposition),
+    _Wikipedia_.
+    3. [**Singular value decomposition**](https://en.wikipedia.org/wiki/Singular_value_decomposition),
+    _Wikipedia_.
+    4. [**Moore-Penrose inverse**](https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse),
+    _Wikipedia_.
 
     """
     if out is not None:
@@ -154,9 +197,9 @@ def inv(
     rcond: float = 1e-15,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    r"""Matrix inversion.
+    r"""Matrix inversion $\mathbf{A}^{-1}$.
 
-    !! note
+    !!! note
         if ``m != n``, the Moore-Penrose pseudoinverse is always used.
 
     Parameters
@@ -165,20 +208,32 @@ def inv(
         Input matrix, with shape `(..., m, n)`.
     method : `{'lu', 'chol', 'svd', 'pinv'}`, default='lu'
         Inversion method:
-        * 'lu'   : LU decomposition. ``a`` must be invertible.
-        * 'chol' : Cholesky decomposition. ``a`` must be positive definite.
-        * 'svd'  : Singular Value decomposition.
-        * 'pinv' : Moore-Penrose pseudoinverse
+
+        * `'lu'`   : LU decomposition. ``a`` must be invertible.
+        * `'chol'` : Cholesky decomposition. ``a`` must be positive definite.
+        * `'svd'`  : Singular Value decomposition.
+        * `'pinv'` : Moore-Penrose pseudoinverse
                    (by means of SVD with thresholded singular values).
     rcond : `float`, default=1e-15
-        Cutoff for small singular values when ``method == 'pinv'``.
+        Cutoff for small singular values when ``method='pinv'``.
     out : `tensor`, optional
-        Output tensor (only used by methods 'lu' and 'chol').
+        Output tensor).
 
     Returns
     -------
     x : `(..., n, m) tensor`
         Inverse matrix, with shape `(..., n, m)`.
+
+    References
+    ----------
+    1. [**LU decomposition**](https://en.wikipedia.org/wiki/LU_decomposition),
+    _Wikipedia_.
+    2. [**Cholesky decomposition**](https://en.wikipedia.org/wiki/Cholesky_decomposition),
+    _Wikipedia_.
+    3. [**Singular value decomposition**](https://en.wikipedia.org/wiki/Singular_value_decomposition),
+    _Wikipedia_.
+    4. [**Moore-Penrose inverse**](https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse),
+    _Wikipedia_.
 
     """
     backend = dict(dtype=a.dtype, device=a.device)
@@ -208,7 +263,8 @@ def matvec(
         vec: Tensor,
         out: Optional[Tensor] = None,
 ) -> Tensor:
-    """Matrix-vector product (supports broadcasting)
+    r"""Matrix-vector product $\mathbf{A} \times \mathbf{b}$
+    (supports broadcasting) .
 
     Parameters
     ----------
@@ -238,9 +294,9 @@ def solvevec(
     rcond: float = 1e-15,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    r"""Left matrix-vector division ``inv(a) @ b``.
+    r"""Left matrix-vector division $\mathbf{A}^{-1} \times \mathbf{b}$.
 
-    !! note
+    !!! note
         if ``m != n``, the Moore-Penrose pseudoinverse is always used.
 
     Parameters
@@ -251,20 +307,32 @@ def solvevec(
         Right input ("the point"), with shape `(..., m)`.
     method : `{'lu', 'chol', 'svd', 'pinv'}`, default='lu'
         Inversion method:
-        * 'lu'   : LU decomposition. ``a`` must be invertible.
-        * 'chol' : Cholesky decomposition. ``a`` must be positive definite.
-        * 'svd'  : Singular Value decomposition.
-        * 'pinv' : Moore-Penrose pseudoinverse
+
+        * `'lu'`   : LU decomposition. ``a`` must be invertible.
+        * `'chol'` : Cholesky decomposition. ``a`` must be positive definite.
+        * `'svd'`  : Singular Value decomposition.
+        * `'pinv'` : Moore-Penrose pseudoinverse
                    (by means of SVD with thresholded singular values).
     rcond : `float`, default=1e-15
-        Cutoff for small singular values when ``method == 'pinv'``.
+        Cutoff for small singular values when ``method='pinv'``.
     out : `tensor`, optional
-        Output tensor (only used by methods 'lu' and 'chol').
+        Output tensor.
 
     Returns
     -------
     x : `(..., n) tensor`
         Solution of the linear system, with shape `(..., n)`,
+
+    References
+    ----------
+    1. [**LU decomposition**](https://en.wikipedia.org/wiki/LU_decomposition),
+    _Wikipedia_.
+    2. [**Cholesky decomposition**](https://en.wikipedia.org/wiki/Cholesky_decomposition),
+    _Wikipedia_.
+    3. [**Singular value decomposition**](https://en.wikipedia.org/wiki/Singular_value_decomposition),
+    _Wikipedia_.
+    4. [**Moore-Penrose inverse**](https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse),
+    _Wikipedia_.
 
     """
     vec = vec.unsqueeze(-1)
@@ -274,26 +342,42 @@ def solvevec(
 
 
 def outer(a: Tensor, b: Tensor, out: Optional[Tensor] = None) -> Tensor:
-    """Outer product of two (batched) tensors
+    r"""Outer product of two (batched) tensors
+    $\mathbf{a} \otimes \mathbf{b} = \mathbf{a} \times \mathbf{b}^\mathrm{H}$.
+
+    !!! warning
+        When $\mathbf{a}$ and $\mathbf{b}$ are complex, this function
+        returns the complex outer product
+        $\mathbf{a} \otimes \mathbf{b} = \mathbf{a}\mathbf{b}^\mathrm{H}$.
 
     Parameters
     ----------
     a : `(..., n) tensor`
+        Left vector, with shape `(..., n)`
     b : `(..., m) tensor`
+        Right vector, with shape `(..., m)`
     out : `(..., n, m) tensor`, optional
+        Output placeholder, with shape `(..., n, m)`
 
     Returns
     -------
     out : `(..., n, m) tensor`
+        Outer product, with shape `(..., n, m)`
+
+    References
+    ----------
+    - [**Outer product**](https://en.wikipedia.org/wiki/Outer_product),
+    _Wikipedia_.
 
     """
     a = a.unsqueeze(-1)
     b = b.unsqueeze(-2)
-    return torch.matmul(a, b, out=out)
+    return torch.matmul(a, b.conj(), out=out)
 
 
 def trace(a: Tensor, keepdim: bool = False) -> Tensor:
-    """Compute the trace of a matrix (or batch)
+    r"""Compute the (batched) trace of a matrix
+    $\operatorname{tr}\left(\mathbf{A}\right)$.
 
     Parameters
     ----------
@@ -302,6 +386,11 @@ def trace(a: Tensor, keepdim: bool = False) -> Tensor:
     Returns
     -------
     t : `(..., [1, 1]) tensor`
+
+    References
+    ----------
+    - [**Trace**](https://en.wikipedia.org/wiki/Trace_(linear_algebra)),
+    _Wikipedia_.
 
     """
     t = a.diagonal(0, -1, -2).sum(-1)
@@ -316,28 +405,38 @@ def dot(
     keepdim: bool = False,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    r"""(Batched) dot product
+    r"""(Batched) dot product of two vectors $\mathbf{a}^\mathrm{H}\mathbf{b}$.
 
-    !! warning
+    !!! warning
         When $\mathbf{a}$ and $\mathbf{b}$ are complex, this function
         returns the complex dot product
-        $(\mathbf{a}, \mathbf{b}) = \mathbf{a}^H\mathbf{b}$.
+        $(\mathbf{a}, \mathbf{b}) = \mathbf{a}^\mathrm{H}\mathbf{b}$.
         This dot product is linear in the second term and antilinear in
         the first term.
 
         This behaviour differs from `torch.dot` and  `torch.inner`, which
-        both compute $\mathbf{a}^T\mathbf{b}$ when the vectors are complex.
+        both compute $\mathbf{a}^\mathrm{T}\mathbf{b}$ when the vectors are complex.
 
     Parameters
     ----------
     a : `(..., n) tensor`
-    b : `(..., n) tensor`
+        Left vector, with shape `(..., n)`
+    b : `(..., m) tensor`
+        Right vector, with shape `(..., m)`
     keepdim : `bool`, default=False
+        Keep reduced dimension
     out : `tensor`, optional
+        Output placeholder
 
     Returns
     -------
     ab : `(..., [1]) tensor`
+        Dot product, with shape `(..., [1])`.
+
+    References
+    ----------
+    - [**Dot product**](https://en.wikipedia.org/wiki/Dot_product),
+    _Wikipedia_.
 
     """
     if out is not None:
@@ -360,12 +459,13 @@ def mdot(
     keepdim: bool = False,
     out: Optional[Tensor] = None,
 ) -> Tensor:
-    """Compute the Frobenius inner product of two matrices
+    r"""Compute the Frobenius inner product of two matrices
+    $\operatorname{tr}(\mathbf{A}^\mathrm{H}\mathbf{B})$.
 
-    !! warning
+    !!! warning
         When $\mathbf{A}$ and $\mathbf{B}$ are complex, this function
         returns the complex dot product
-        $(\mathbf{A}, \mathbf{B}) = \operatorname{trace}(\mathbf{A}^H\mathbf{B})$.
+        $(\mathbf{A}, \mathbf{B}) = \operatorname{tr}(\mathbf{A}^\mathrm{H}\mathbf{B})$.
         This dot product is linear in the second term and antilinear in
         the first term.
 
@@ -433,3 +533,21 @@ def is_orthonormal(basis: Tensor, return_matrix: bool = False) \
             mat[j, i] = mat[i, j].conj()
     check = torch.allclose(mat, torch.eye(F, **info))
     return (check, mat) if return_matrix else check
+
+
+def round(t: Tensor, decimals: int = 0) -> Tensor:
+    """Round a tensor to the given number of decimals.
+
+    Parameters
+    ----------
+    t : tensor
+        Input tensor.
+    decimals : int
+        Round to this decimal.
+
+    Returns
+    -------
+    t : tensor
+        Rounded tensor.
+    """
+    return torch.round(t * 10 ** decimals) / (10 ** decimals)

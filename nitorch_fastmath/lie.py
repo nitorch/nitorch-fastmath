@@ -1,24 +1,29 @@
-__all__ = ['expm', 'logm', 'meanm']
+"""
+
+"""
+__all__ = ['expm', 'logm', 'meanm', 'expm_derivatives']
 import torch
+from torch import Tensor
 from warnings import warn
 from .sugar import lmdiv
-from ._expm import expm, _expm
-from ._logm import logm
+from ._impl.expm import expm, expm_derivatives
+from ._impl.logm import logm
 
 
-def meanm(mats, max_iter=1024, tol=1e-20):
-    """Compute the exponential barycentre of a set of matrices.
+def meanm(mats: Tensor, max_iter: int = 1024, tol: float = 1e-20):
+    r"""Compute the exponential barycentre of a set of matrices.
 
     Parameters
     ----------
-    mats : (N, M, M) tensor_like[float]
+    mats : (N, M, M) tensor
         Set of square invertible matrices
-    max_iter : int, default=1024
+    max_iter : int
         Maximum number of iterations
-    tol : float, default=1E-20
+    tol : float
         Tolerance for early stopping.
         The tolerance criterion is the sum-of-squares of the residuals
-        in log-space, _i.e._, :math:`||\sum_n \log_M(A_n) / N||^2`
+        in log-space, _i.e._,
+        $\lVert\frac{1}{N}\sum_n \log_M(\mathbf{A}_n)\rVert_\mathrm{F}^2$
 
     Returns
     -------
@@ -27,12 +32,21 @@ def meanm(mats, max_iter=1024, tol=1e-20):
 
     References
     ----------
-    .. [1]  Xavier Pennec, Vincent Arsigny.
-        "Exponential Barycenters of the Canonical Cartan Connection and
-        Invariant Means on Lie Groups."
-        Matrix Information Geometry, Springer, pp.123-168, 2012.
-        (10.1007/978-3-642-30232-9_7). (hal-00699361)
-        https://hal.inria.fr/hal-00699361
+    1.  Pennec, X. and Arsigny, V., 2012.
+        [**Exponential barycenters of the canonical Cartan connection and invariant means on Lie groups.**](https://hal.inria.fr/hal-00699361)
+        In _Matrix information geometry_ (pp. 123-166).
+        Berlin, Heidelberg: Springer Berlin Heidelberg.
+
+            @incollection{pennec2012,
+              title={Exponential barycenters of the canonical Cartan connection and invariant means on Lie groups},
+              author={Pennec, Xavier and Arsigny, Vincent},
+              booktitle={Matrix information geometry},
+              pages={123--166},
+              year={2012},
+              publisher={Springer},
+              url={https://hal.inria.fr/hal-00699361}
+            }
+
 
     """
 
@@ -51,7 +65,8 @@ def meanm(mats, max_iter=1024, tol=1e-20):
     # NOTE: all computations are performed in double, else logm is not
     # precise enough
 
-    mats = as_tensor(mats)
+    if not torch.is_tensor(mats):
+        mats = torch.stack(mats)
     dim = mats.shape[-1] - 1
     dtype = mats.dtype
     device = mats.device

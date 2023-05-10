@@ -247,3 +247,33 @@ def eps(dtype='float32'):
         return 2 ** -52
     else:
         raise NotImplementedError
+
+
+def broadcast_backward(input, shape):
+    """Sum a tensor across dimensions that have been broadcasted.
+
+    Parameters
+    ----------
+    input : tensor
+        Tensor with broadcasted shape.
+    shape : tuple[int]
+        Original shape.
+
+    Returns
+    -------
+    output : tensor with shape `shape`
+
+    """
+    input_shape = input.shape
+    dim = len(input_shape)
+    for i, s in enumerate(reversed(shape)):
+        dim = len(input_shape) - i - 1
+        if s != input_shape[dim]:
+            if s == 1:
+                input = torch.sum(input, dim=dim, keepdim=True)
+            else:
+                raise ValueError('Shapes not compatible for broadcast: '
+                                 '{} and {}'.format(tuple(input_shape), tuple(shape)))
+    if dim > 0:
+        input = torch.sum(input, dim=list(range(dim)), keepdim=False)
+    return input

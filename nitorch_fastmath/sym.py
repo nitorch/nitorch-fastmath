@@ -26,12 +26,12 @@ where `*` is any number of leading batch dimensions, `NN` can take values:
 ---
 """
 __all__ = [
-    'sym_to_full', 'sym_diag', 'sym_outer', 'sym_det',
+    'sym_to_full', 'sym_diag', 'sym_outer', 'sym_det', 'sym_matmul',
     'sym_matvec',
     'sym_addmatvec', 'sym_addmatvec_',
     'sym_submatvec', 'sym_submatvec_',
     'sym_solve', 'sym_solve_',
     'sym_invert', 'sym_invert_'
 ]
-from .sym_script import sym_to_full, sym_diag, sym_outer, sym_det
+from ._impl.sym import sym_to_full, sym_diag, sym_outer, sym_det, sym_matmul
 from jitfields.sym import *

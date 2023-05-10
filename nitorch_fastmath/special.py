@@ -10,12 +10,15 @@ def mvdigamma(input, order: int = 1):
 
     Parameters
     ----------
-    input : `tensor`
-    order : `int`, default=1
+    input : tensor
+        Input tensor
+    order : int
+        Multivariate order
 
     Returns
     -------
-    output : `tensor`
+    output : tensor
+        Output tensor
     """
     dg = torch.digamma(input)
     for p in range(2, order + 1):
@@ -39,16 +42,17 @@ def besseli(nu, z, mode=None):
     Returns
     -------
     b : tensor
+
         besseli(nu,z)        if mode is None
         besseli(ni,z)/exp(z) if mode == 'norm'
         log(besseli(nu,z))   if mode == 'log'
 
     References
     ----------
-    1. "On the use of the noncentral chi-square density function
-        for the distribution of helicopter spectral estimates."
-        Garber DP.
-        NASA, Langley Research Center (1993)
+    1.  Garber, D.P., 1993.
+        **On the use of the noncentral chi-square density function for
+        the distribution of helicopter spectral estimates.**
+        (No. NAS 1.26: 191546).
     """
     z = torch.as_tensor(z)
     is_scalar = z.dim() == 0
@@ -59,18 +63,18 @@ def besseli(nu, z, mode=None):
     else:
         code = mode
     if nu == 0:
-        z = besseli0(z, code)
+        z = _besseli0(z, code)
     elif nu == 1:
-        z = besseli1(z, code)
+        z = _besseli1(z, code)
     else:
-        z = besseli_any(nu, z, code)
+        z = _besseli_any(nu, z, code)
     if is_scalar:
         z = z[0]
     return z
 
 
 @torch.jit.script
-def besseli0(z, code: int = 0):
+def _besseli0(z, code: int = 0):
     """Modified Bessel function of the first kind
 
     Parameters
@@ -120,12 +124,14 @@ def besseli0(z, code: int = 0):
 
 
 @torch.jit.script
-def besseli1(z, code: int = 0):
+def _besseli1(z, code: int = 0):
     """Modified Bessel function of the first kind
+
     Parameters
     ----------
     z : tensor
     code : {0, 1, 2}
+
     Returns
     -------
     b : tensor
@@ -164,14 +170,16 @@ def besseli1(z, code: int = 0):
 
 
 @torch.jit.script
-def besseli_small(nu: float, z, M: int = 64, code: int = 0):
+def _besseli_small(nu: float, z, M: int = 64, code: int = 0):
     """Modified Bessel function of the first kind - series computation
+
     Parameters
     ----------
     nu : float
     z  : tensor
     M  : int, series length (bigger is more accurate, but slower)
     code : {0, 1, 2}
+
     Returns
     -------
     b : tensor
@@ -204,14 +212,16 @@ def besseli_small(nu: float, z, M: int = 64, code: int = 0):
 
 # DEPRECATED
 @torch.jit.script
-def besseli_small_old(nu: float, z, M: int = 64, code: int = 0):
+def _besseli_small_old(nu: float, z, M: int = 64, code: int = 0):
     """Modified Bessel function of the first kind - series computation
+
     Parameters
     ----------
     nu : float
     z  : tensor
     M  : int, series length (bigger is more accurate, but slower)
     code : {0, 1, 2}
+
     Returns
     -------
     b : tensor
@@ -234,14 +244,17 @@ def besseli_small_old(nu: float, z, M: int = 64, code: int = 0):
 
 
 @torch.jit.script
-def besseli_large(nu: float, z, code: int = 0):
+def _besseli_large(nu: float, z, code: int = 0):
     """Modified Bessel function of the first kind
+
     Uniform asymptotic approximation (Abramowitz and Stegun p 378)
+
     Parameters
     ----------
     nu   : scalar float
     z    : torch tensor
     code : 0, 1 or 2
+
     Returns
     -------
     b : tensor
@@ -299,33 +312,36 @@ def besseli_large(nu: float, z, code: int = 0):
 
 
 @torch.jit.script
-def besseli_any(nu: float, z, code: int = 0):
+def _besseli_any(nu: float, z, code: int = 0):
     """
     Modified Bessel function of the first kind
+
     Parameters
     ----------
     nu : float
     z  : tensor
     code : {0, 1, 2}
+
     Returns
     -------
     b : tensor
         besseli(nu,z)        if code==0
         besseli(nu,z)/exp(z) if code==1 ('norm')
         log(besseli(nu,z))   if code==2 ('log')
+
     """
 
     if nu >= 15.0:
-        f = besseli_large(nu, z, code)
+        f = _besseli_large(nu, z, code)
     else:
         thr = 5.0 * pymath.sqrt(15.0 - nu) * pymath.sqrt(nu + 15.0) / 3.0
         msk = z < 2.0 * thr
         f = torch.zeros_like(z)
         if msk.any():
-            f[msk] = besseli_small(nu, z[msk], int(pymath.ceil(thr*1.9+2.0)), code)
+            f[msk] = _besseli_small(nu, z[msk], int(pymath.ceil(thr * 1.9 + 2.0)), code)
         msk = msk.bitwise_not_()
         if msk.any():
-            f[msk] = besseli_large(nu, z[msk], code)
+            f[msk] = _besseli_large(nu, z[msk], code)
     return f
 
 
@@ -348,8 +364,9 @@ def besseli_ratio(nu: float, X, N: int = 4, K: int = 10):
 
     References
     ----------
-    1. Amos DE. "Computation of modified Bessel functions and their ratios."
-       Mathematics of Computation. 1974;28(125):239-251.
+    1. Amos, D.E., 1974.
+      **Computation of modified Bessel functions and their ratios.**
+      _Mathematics of computation_, 28(125), pp.239-251.
     """
 
     # Begin by computing besseli(nu+1+N,x)/besseli(nu+N,x)

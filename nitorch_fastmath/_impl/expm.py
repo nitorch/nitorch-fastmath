@@ -9,34 +9,33 @@ object of future work.
 """
 import torch
 import torch.nn.functional as F
-from .optionals import custom_fwd, custom_bwd
-from .broadcast import broadcast_backward
-from .tensors import as_tensor, max_backend, requires_grad
+from .utils import custom_fwd, custom_bwd, broadcast_backward
 
 
 def expm(X, basis=None, max_order=10000, tol=1e-32):
     """Matrix exponential.
 
-    Notes
-    -----
-    .. This function evaluates the matrix exponential and its
-       derivatives using a Taylor approximation. A faster integration
-       technique, based  e.g. on scaling and squaring, could have been
-       used instead.
-    .. PyTorch/NumPy broadcasting rules apply.
-       See: https://pytorch.org/docs/stable/notes/broadcasting.html
-    .. This function is automtically differentiable.
+    !!! notes
+
+        -  This function evaluates the matrix exponential using a Taylor
+           approximation. A faster integration technique, based  e.g.
+           on scaling and squaring, could have been used instead.
+
+         - PyTorch/NumPy [broadcasting rules](https://pytorch.org/docs/stable/notes/broadcasting.html)
+           apply.
+
+        -  This function is automatically differentiable.
 
     Parameters
     ----------
-    X : {(..., F), (..., D, D)} tensor_like
+    X : {(..., F), (..., D, D)} tensor
         If `basis` is None: log-matrix.
         Else:               parameters of the log-matrix in the basis set.
-    basis : (..., F, D, D) tensor_like, optional.
+    basis : (..., F, D, D) tensor, optional.
         Basis set.
-    max_order : int, default=10000
+    max_order : int
         Order of the Taylor expansion
-    tol : float, default=1e-32
+    tol : float
         Tolerance for early stopping
         The criterion is based on the Frobenius norm of the last term of
         the Taylor series.
@@ -48,56 +47,56 @@ def expm(X, basis=None, max_order=10000, tol=1e-32):
 
     """
     return _ExpM.apply(X, basis, max_order, tol)
-    # if hasattr(torch, 'matrix_exp'):
-    #     return _expm_torch(X, basis)
-    # else:
-    #     return _ExpM.apply(X, basis, max_order, tol)
 
 
-def _expm(X, basis=None, grad_X=False, grad_basis=False, hess_X=False,
-          max_order=10000, tol=1e-32):
+def expm_derivatives(X, basis=None, grad_X=False, grad_basis=False, hess_X=False,
+                     max_order=10000, tol=1e-32):
     """Matrix exponential (and its derivatives).
 
-    Notes
-    -----
-    .. This function evaluates the matrix exponential and its
-       derivatives using a Taylor approximation. A faster integration
-       technique, based  e.g. on scaling and squaring, could have been
-       used instead.
-    .. PyTorch/NumPy broadcasting rules apply.
-       See: https://pytorch.org/docs/stable/notes/broadcasting.html
-    .. The output shapes of `dX` and `dB` can be different from the
-       shapes of `X` and `basis`, because of broadcasting.
-       When computing the backward pass, you should take their dot
-       product with the output gradient and then reduce across axes
-       that have been expanded by broadcasting. E.g.:
-       >>> def backward(grad, X, B):
-       >>>     # X.shape     == (*batch_X, F)
-       >>>     # B.shape     == (*batch_B, F, D, D)
-       >>>     # grad.shape  == (*batch_XB, D, D)
-       >>>     _, dX, dB = _dexpm(X, B, grad_X=True, grad_basis=True)
-       >>>     # dX.shape    == (*batch_XB, F, D, D)
-       >>>     # dB.shape    == (*batch_XB, F, D, D, D, D)
-       >>>     dX = torch.sum(dX * grad[..., None, :, :], dim=[-1, -2])
-       >>>     dX = broadcast_backward(dX, X.shape)
-       >>>     dB = torch.sum(dB * grad[..., None, None, None, :, :], dim=[-1, -2])
-       >>>     dB = broadcast_backward(dB, B.shape)
-       >>>     return dX, dB
+    !!! notes
+
+        -  This function evaluates the matrix exponential and its
+           derivatives using a Taylor approximation. A faster integration
+           technique, based  e.g. on scaling and squaring, could have been
+           used instead.
+
+         - PyTorch/NumPy [broadcasting rules](https://pytorch.org/docs/stable/notes/broadcasting.html)
+           apply.
+
+        -  The output shapes of `dX` and `dB` can be different from the
+           shapes of `X` and `basis`, because of broadcasting.
+           When computing the backward pass, you should take their dot
+           product with the output gradient and then reduce across axes
+           that have been expanded by broadcasting. E.g.:
+           ```python
+           def backward(grad, X, B):
+               # X.shape     == (*batch_X, F)
+               # B.shape     == (*batch_B, F, D, D)
+               # grad.shape  == (*batch_XB, D, D)
+               _, dX, dB = _dexpm(X, B, grad_X=True, grad_basis=True)
+               # dX.shape    == (*batch_XB, F, D, D)
+               # dB.shape    == (*batch_XB, F, D, D, D, D)
+               dX = torch.sum(dX * grad[..., None, :, :], dim=[-1, -2])
+               dX = broadcast_backward(dX, X.shape)
+               dB = torch.sum(dB * grad[..., None, None, None, :, :], dim=[-1, -2])
+               dB = broadcast_backward(dB, B.shape)
+               return dX, dB
+           ```
 
     Parameters
     ----------
-    X : {(..., F), (..., D, D)} tensor_like
+    X : {(..., F), (..., D, D)} tensor
         If `basis` is None: log-matrix.
         Else:               parameters of the log-matrix in the basis set.
-    basis : (..., F, D, D) tensor_like, default=None
+    basis : (..., F, D, D) tensor
         Basis set. If None, basis of all DxD matrices and F = D**2.
-    grad_X : bool, default=False
+    grad_X : bool
         Compute derivatives with respect to `X`.
-    grad_basis : bool, default=False
+    grad_basis : bool
         Compute derivatives with respect to `basis`.
-    max_order : int, default=10000
+    max_order : int
         Order of the Taylor expansion
-    tol : float, default=1e-32
+    tol : float
         Tolerance for early stopping
         The criterion is based on the Frobenius norm of the last term of
         the Taylor series.
@@ -137,13 +136,11 @@ def _expm(X, basis=None, grad_X=False, grad_basis=False, hess_X=False,
             a = a + b
         return a
 
-    backend = max_backend(X, basis)
-    X = as_tensor(X, **backend)
+    backend = dict(dtype=X.dtype, device=X.device)
 
     if basis is not None:
         # X contains parameters in the Lie algebra -> reconstruct the matrix
         # X.shape = [.., F], basis.shape = [..., F, D, D]
-        basis = as_tensor(basis, **backend)
         param = X
         X = torch.sum(basis * X[..., None, None], dim=-3, keepdim=True)
         dim = basis.shape[-1]
@@ -249,7 +246,7 @@ class _ExpM(torch.autograd.Function):
                         'max_order': max_order, 'tol': tol}
 
         # Compute matrix exponential
-        E = _expm(X, basis, max_order=max_order, tol=tol)
+        E = expm_derivatives(X, basis, max_order=max_order, tol=tol)
         return E
 
     @staticmethod
@@ -271,9 +268,10 @@ class _ExpM(torch.autograd.Function):
         needs_grad_basis = requires_grad(ctx, 'basis')
 
         # Compute derivative of output w.r.t. input
-        _, *input_grad = _expm(X, basis, max_order=max_order, tol=tol,
-                               grad_X=needs_grad_X,
-                               grad_basis=needs_grad_basis)
+        _, *input_grad = expm_derivatives(
+            X, basis, max_order=max_order, tol=tol,
+            grad_X=needs_grad_X,
+            grad_basis=needs_grad_basis)
 
         # Chain rule: dot product with derivative of loss w.r.t. output
         if needs_grad_X:
@@ -294,13 +292,17 @@ class _ExpM(torch.autograd.Function):
 
 
 def _expm_torch(X, basis=None):
-    backend = max_backend(X, basis)
-    X = as_tensor(X, **backend)
-
     if basis is not None:
         # X contains parameters in the Lie algebra -> reconstruct the matrix
         # X.shape = [.., F], basis.shape = [..., F, D, D]
-        basis = as_tensor(basis, **backend)
         X = torch.sum(basis * X[..., None, None], dim=-3)
 
     return torch.matrix_exp(X)
+
+
+def requires_grad(ctx, name):
+    """Checks if a named variable requires gradients."""
+    for g, n in zip(ctx.needs_input_grad, ctx.names):
+        if n == name:
+            return g
+    return False

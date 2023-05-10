@@ -21,6 +21,15 @@ plugins:
           preload_modules: 
           - jitfields
 markdown_extensions:
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- pymdownx.highlight:
+    anchor_linenums: true
+    line_spans: __span
+    pygments_lang_class: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
 - pymdownx.arithmatex:
     generic: true
 extra_javascript:
@@ -34,11 +43,15 @@ nav:
 - Getting Started: start.md
 - API: 
   - sym: api/sym.md
-  - simplex: api/simplex.md
-  - reduce: api/reduce.md
+  - batched: api/batched.md
   - qr: api/qr.md
-  - linalg: api/linalg.md
+  - lie: api/lie.md
   - stochastic: api/stochastic.md
+  - sugar: api/sugar.md
+  - simplex: api/simplex.md
+  - special: api/special.md
+  - reduce: api/reduce.md
+  - realtransforms: api/realtransforms.md
 
 watch:
 - ../nitorch_fastmath

@@ -271,20 +271,19 @@ def logit(
         implicit: OneOrTwo[bool] = False,
         implicit_index: int = 0,
 ) -> Tensor:
-    """(Multiclass) logit function
+    r"""(Multiclass) logit function
 
-    Notes
-    -----
-    - $\operatorname{logit}(\mathbf{x})_k = \log(x_k) - \log(x_K)$,
-      where K is an arbitrary channel.
-    - The `logit` function is the inverse of the `softmax` function:
-        - `logit(softmax(x, implicit=True), implicit=True) == x`
-        - `softmax(logit(x, implicit=True), implicit=True) == x`
-    - Note that when `implicit=False`, `softmax` is surjective (many
-       possible logits map to the same simplex value). We only have:
-        - `softmax(logit(x, implicit=False), implicit=False) == x`
-    - `logit(x, implicit=True)`, with `x.shape[dim] == 1` is equivalent
-       to the "classical" binary logit function (inverse of the sigmoid).
+    !!! notes
+        - $\operatorname{logit}(\mathbf{x})_k = \log(x_k) - \log(x_K)$,
+          where K is an arbitrary channel.
+        - The `logit` function is the inverse of the `softmax` function:
+            - `logit(softmax(x, implicit=True), implicit=True) == x`
+            - `softmax(logit(x, implicit=True), implicit=True) == x`
+        - Note that when `implicit=False`, `softmax` is surjective (many
+           possible logits map to the same simplex value). We only have:
+            - `softmax(logit(x, implicit=False), implicit=False) == x`
+        - `logit(x, implicit=True)`, with `x.shape[dim] == 1` is equivalent
+           to the "classical" binary logit function (inverse of the sigmoid).
 
     Parameters
     ----------

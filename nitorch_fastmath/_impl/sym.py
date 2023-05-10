@@ -526,3 +526,147 @@ def sym_outer(x: Tensor) -> Tensor:
                 torch.mul(x[..., m], x[..., n], out=xx[..., index])
                 index += 1
     return xx
+
+
+@torch.jit.script
+def jhj1(jac, hess):
+    # jac should be ordered as (D, D, ...)          [D=1]
+    # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=1]
+    # return ->  (D*(D+1)//2, ...)
+    return (jac[0, 0] * jac[0, 0] * hess[0])[None]
+
+
+@torch.jit.script
+def jhj2(jac, hess):
+    # jac should be ordered as (D, D, ...)          [D=2]
+    # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=3]
+    # return ->  (D*(D+1)//2, ...)
+    #
+    # Matlab symbolic toolbox:
+    # out[00] = h00*j00^2 + h11*j01^2 + 2*h01*j00*j01
+    # out[11] = h00*j10^2 + h11*j11^2 + 2*h01*j10*j11
+    # out[01] = h00*j00*j10 + h11*j01*j11 + h01*(j01*j10 + j00*j11)
+    out = torch.empty_like(hess)
+    h00 = hess[0]
+    h11 = hess[1]
+    h01 = hess[2]
+    j00 = jac[0, 0]
+    j01 = jac[0, 1]
+    j10 = jac[1, 0]
+    j11 = jac[1, 1]
+    out[0] = j00 * j00 * h00 + j01 * j01 * h11 + 2 * j00 * j01 * h01
+    out[1] = j10 * j10 * h00 + j11 * j11 * h11 + 2 * j10 * j11 * h01
+    out[2] = j00 * j10 * h00 + j01 * j11 * h11 + (j01 * j10 + j00 * j11) * h01
+    return out
+
+
+@torch.jit.script
+def jhj3(jac, hess):
+    # jac should be ordered as (D, D, ...)          [D=3]
+    # hess should be ordered as (D*(D+1)//2, ...)   [D*(D+1)//2=6]
+    # return ->  (D*(D+1)//2, ...)
+    #
+    # Matlab symbolic toolbox:
+    # out[00] = h00*j00^2 + 2*h01*j00*j01 + 2*h02*j00*j02 + h11*j01^2 + 2*h12*j01*j02 + h22*j02^2
+    # out[11] = h00*j10^2 + 2*h01*j10*j11 + 2*h02*j10*j12 + h11*j11^2 + 2*h12*j11*j12 + h22*j12^2
+    # out[22] = h00*j20^2 + 2*h01*j20*j21 + 2*h02*j20*j22 + h11*j21^2 + 2*h12*j21*j22 + h22*j22^2
+    # out[01] = j10*(h00*j00 + h01*j01 + h02*j02) + j11*(h01*j00 + h11*j01 + h12*j02) + j12*(h02*j00 + h12*j01 + h22*j02)
+    # out[02] = j20*(h00*j00 + h01*j01 + h02*j02) + j21*(h01*j00 + h11*j01 + h12*j02) + j22*(h02*j00 + h12*j01 + h22*j02)
+    # out[12] = j20*(h00*j10 + h01*j11 + h02*j12) + j21*(h01*j10 + h11*j11 + h12*j12) + j22*(h02*j10 + h12*j11 + h22*j12)
+    out = torch.empty_like(hess)
+    h00 = hess[0]
+    h11 = hess[1]
+    h22 = hess[2]
+    h01 = hess[3]
+    h02 = hess[4]
+    h12 = hess[5]
+    j00 = jac[0, 0]
+    j01 = jac[0, 1]
+    j02 = jac[0, 2]
+    j10 = jac[1, 0]
+    j11 = jac[1, 1]
+    j12 = jac[1, 2]
+    j20 = jac[2, 0]
+    j21 = jac[2, 1]
+    j22 = jac[2, 2]
+    out[0] = h00 * j00 * j00 + 2 * h01 * j00 * j01 + 2 * h02 * j00 * j02 + h11 * j01 * j01 + 2 * h12 * j01 * j02 + h22 * j02 * j02
+    out[1] = h00 * j10 * j10 + 2 * h01 * j10 * j11 + 2 * h02 * j10 * j12 + h11 * j11 * j11 + 2 * h12 * j11 * j12 + h22 * j12 * j12
+    out[2] = h00 * j20 * j20 + 2 * h01 * j20 * j21 + 2 * h02 * j20 * j22 + h11 * j21 * j21 + 2 * h12 * j21 * j22 + h22 * j22 * j22
+    out[3] = j10 * (h00 * j00 + h01 * j01 + h02 * j02) + j11 * (h01 * j00 + h11 * j01 + h12 * j02) + j12 * (h02 * j00 + h12 * j01 + h22 * j02)
+    out[4] = j20 * (h00 * j00 + h01 * j01 + h02 * j02) + j21 * (h01 * j00 + h11 * j01 + h12 * j02) + j22 * (h02 * j00 + h12 * j01 + h22 * j02)
+    out[5] = j20 * (h00 * j10 + h01 * j11 + h02 * j12) + j21 * (h01 * j10 + h11 * j11 + h12 * j12) + j22 * (h02 * j10 + h12 * j11 + h22 * j12)
+    return out
+
+
+@torch.jit.script
+def jhjn(jac, hess):
+    # jac should be ordered as (D, K, ...)
+    # hess should be ordered as (K*(K+1)//2, ...)
+    # return ->  (D*(D+1)//2, ...)
+
+    K, D = jac.shape[:2]
+    D2 = D * (D + 1) // 2
+    K2 = hess.shape[0]
+    is_diag = K2 == K
+    batch = torch.broadcast_shapes(jac.shape[2:], hess.shape[1:])
+
+    out = hess.new_zeros([D2] + batch)
+
+    dacc = 0
+    for d in range(D):
+        doffset = (d + 1) * D - dacc  # offdiagonal offset
+        dacc += d + 1
+        # diagonal of output
+        hacc = 0
+        for k in range(K):
+            hoffset = (k + 1) * K - hacc
+            hacc += k + 1
+            out[d] += hess[k] * jac[k, d].square()
+            if not is_diag:
+                for i, l in enumerate(range(k + 1, K)):
+                    out[d] += 2 * hess[i + hoffset] * jac[k, d] * jac[l, d]
+        # off diagonal of output
+        for j, e in enumerate(range(d + 1, D)):
+            hacc = 0
+            for k in range(K):
+                hoffset = (k + 1) * K - hacc
+                hacc += k + 1
+                out[j + doffset] += hess[k] * jac[k, d] * jac[k, e]
+                if not is_diag:
+                    for i, l in enumerate(range(k + 1, K)):
+                        out[j + doffset] += hess[i + hoffset] * (
+                                jac[k, d] * jac[l, e] + jac[l, d] * jac[k, e])
+    return out
+
+
+def sym_matmul(j, h):
+    r"""
+    Compute the symmetric matrix product
+    $\mathbf{J}^\mathrm{T}\mathbf{H}\mathbf{J}$, where $\mathbf{H}$ is
+    a compact symmetric matrix, and return a compact symmetric matrix.
+
+    Parameters
+    ----------
+    j : (..., k, d) tensor
+        Non symmetric matrix
+    h : (..., k*(k+1)//2) tensor
+        Symmetric matrix with compact storage.
+
+    Returns
+    -------
+    jhj : (..., d*(d+1)//2) tensor
+        Symmetric matrix with compact storage.
+    """
+    k, d = j.shape[-2:]
+    h = h.movedim(-1, 0)
+    j = j.movedim(-1, 0).movedim(-1, 0)
+    if d == k == 1:
+        out = jhj1(j, h)
+    elif d == k == 2:
+        out = jhj2(j, h)
+    elif d == k == 3:
+        out = jhj3(j, h)
+    else:
+        out = jhjn(j, h)
+    out = out.movedim(0, -1)
+    return out

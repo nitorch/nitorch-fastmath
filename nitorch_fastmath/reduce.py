@@ -151,7 +151,7 @@ def max(
     return_indices: bool = False,
     out: Optional[OneOrTwo[Tensor]] = None,
 ) -> Tuple[Tensor, Optional[Tensor]]:
-    """Multi-dimensional max reduction.
+    r"""Multi-dimensional max reduction.
 
     Signatures
     ----------
@@ -161,10 +161,10 @@ def max(
     max(input, dim, return_indices=True) -> (Tensor, Tensor)
     ```
 
-    Notes
-    -----
-    - This function cannot compute the maximum of two tensors, it only
-       computes the maximum of one tensor (along a dimension).
+    !!! warning
+        Contrary to `torch.max`, this function cannot compute the
+        maximum of two tensors, it only computes the maximum of one
+        tensor (along a dimension).
 
     Parameters
     ----------
@@ -206,7 +206,7 @@ def min(
     return_indices: bool = False,
     out: Optional[OneOrTwo[Tensor]] = None,
 ) -> Tuple[Tensor, Optional[Tensor]]:
-    """Multi-dimensional min reduction.
+    r"""Multi-dimensional min reduction.
 
     Signatures
     ----------
@@ -216,10 +216,10 @@ def min(
     min(input, dim, return_indices=True) -> (Tensor, Tensor)
     ```
 
-    Notes
-    -----
-    - This function cannot compute the minimum of two tensors, it only
-       computes the minimum of one tensor (along a dimension).
+    !!! warning
+        Contrary to `torch.min`, this function cannot compute the
+        minimum of two tensors, it only computes the minimum of one
+        tensor (along a dimension).
 
     Parameters
     ----------
@@ -272,7 +272,7 @@ def nanmax(
     return_indices: bool = False,
     out: Optional[OneOrTwo[Tensor]] = None,
 ) -> Tuple[Tensor, Optional[Tensor]]:
-    """Multi-dimensional max reduction, excluding NaNs.
+    r"""Multi-dimensional max reduction, excluding NaNs.
 
     Signatures
     ----------
@@ -282,10 +282,10 @@ def nanmax(
     nanmax(input, dim, return_indices=True) -> (Tensor, Tensor)
     ```
 
-    Notes
-    -----
-    - This function cannot compute the minimum of two tensors, it only
-       computes the minimum of one tensor (along a dimension).
+    !!! warning
+        Contrary to `torch.max`, this function cannot compute the
+        maximum of two tensors, it only computes the maximum of one
+        tensor (along a dimension).
 
     Parameters
     ----------
@@ -336,7 +336,7 @@ def nanmin(
     return_indices: bool = False,
     out: Optional[OneOrTwo[Tensor]] = None,
 ) -> Tuple[Tensor, Optional[Tensor]]:
-    """Multi-dimensional min reduction, excluding NaNs.
+    r"""Multi-dimensional min reduction, excluding NaNs.
 
     Signatures
     ----------
@@ -346,10 +346,11 @@ def nanmin(
     nanmin(input, dim, return_indices=True) -> (Tensor, Tensor)
     ```
 
-    Notes
-    -----
-    - This function cannot compute the minimum of two tensors, it only
-       computes the minimum of one tensor (along a dimension).
+    !!! warning
+        Contrary to `torch.min`, this function cannot compute the
+        minimum of two tensors, it only computes the minimum of one
+        tensor (along a dimension).
+
 
     Parameters
     ----------
@@ -389,7 +390,7 @@ def median(
     return_indices: bool = False,
     out: Optional[OneOrTwo[Tensor]] = None,
 ) -> Tensor:
-    """Multi-dimensional median reduction.
+    r"""Multi-dimensional median reduction.
 
     Signatures
     ----------
@@ -399,9 +400,8 @@ def median(
     median(input, dim, return_indices=True) -> (Tensor, Tensor)
     ```
 
-    Note
-    ----
-    - This function always omits NaNs
+    !!! note
+        This function always omits NaNs
 
     Parameters
     ----------
