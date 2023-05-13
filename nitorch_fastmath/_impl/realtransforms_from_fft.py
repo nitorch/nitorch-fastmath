@@ -823,9 +823,6 @@ def _dct_or_dst_type2(
     dst : bool
         If True, a discrete sine transform is computed rather than the discrete
         cosine transform.
-    overwrite_x : bool
-        Indicates that it is okay to overwrite x. In practice, the current
-        implementation never performs the transform in-place.
 
     Returns
     -------
@@ -844,6 +841,7 @@ def _dct_or_dst_type2(
     x = _cook_shape(x, (n,), (dim,), 'R2R')
     n = x.shape[dim]
 
+    # (anti) symmetric extension
     x = _reshuffle_dct2(x, dim, dst)
 
     ortho_scipy = norm == 'ortho_scipy'
@@ -867,6 +865,7 @@ def _dct_or_dst_type2(
         x = x.flip(dim)
 
     if norm == 'ortho':
+        # divide first (or last) element by sqrt(2)
         x = x.movedim(dim, 0)
         x[0] *= sqrt2 * 0.5
         x = x.movedim(0, dim)
@@ -957,9 +956,6 @@ def _dct_or_dst_type3(
     dst : bool
         If True, a discrete sine transform is computed rather than the discrete
         cosine transform.
-    overwrite_x : bool
-        Indicates that it is okay to overwrite x. In practice, the current
-        implementation never performs the transform in-place.
 
     Returns
     -------

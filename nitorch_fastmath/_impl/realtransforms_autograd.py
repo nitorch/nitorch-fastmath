@@ -16,7 +16,7 @@ class DCTN(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, type, dim, norm):
         norm = norm or 'backward'
-        if type != (2, 3) and norm == 'ortho_scipy':
+        if type not in (2, 3) and norm == 'ortho_scipy':
             norm = 'ortho'
         ctx.dim = dim
         ctx.norm = norm
@@ -53,7 +53,7 @@ class DSTN(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, type, dim, norm):
         norm = norm or 'backward'
-        if type != (2, 3) and norm == 'ortho_scipy':
+        if type not in (2, 3) and norm == 'ortho_scipy':
             norm = 'ortho'
         ctx.dim = dim
         ctx.norm = norm
